@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>먹이사슬 만들기 - 리더보드</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for better typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the activity */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            touch-action: none; /* Disable default touch actions like pinch-zoom on mobile */
+        }
+        .organism {
+            cursor: grab;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, opacity 0.3s;
+        }
+        .organism:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+            z-index: 1000;
+        }
+        #ecosystem-canvas {
+            background-color: #E2F0D9;
+            background-image:
+                linear-gradient(to right, #A9D18E 1px, transparent 1px),
+                linear-gradient(to bottom, #A9D18E 1px, transparent 1px);
+            background-size: 40px 40px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #A9D18E;
+        }
+        .placed-organism {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(4px);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            border: 2px solid transparent;
+            user-select: none; /* Prevent text selection while dragging */
+        }
+        .placed-organism.selected {
+            border-color: #F59E0B; /* Amber color for selection */
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.7);
+        }
+        .score-feedback {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.5rem; /* 24px */
+            pointer-events: none;
+            transition: all 1s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col h-screen">
+
+    <!-- Header Section -->
+    <header class="bg-white shadow-md p-4 z-20 flex justify-between items-center">
+        <div class="flex-1">
+            <h1 class="text-2xl font-bold text-green-700">인터랙티브 먹이사슬 & 먹이그물 만들기</h1>
+            <p class="text-gray-600 mt-1">유기체를 오른쪽 생태계로 드래그한 후, 클릭하여 연결해보세요!</p>
+        </div>
+        <div class="flex items-center space-x-6 pr-4">
+            <div id="user-id-display" class="text-sm font-semibold text-gray-500">사용자 ID: <span></span></div>
+            <div id="level-display" class="text-xl font-bold text-gray-700">레벨 1</div>
+            <div id="score-display" class="text-2xl font-bold text-blue-600">점수: 0</div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Organism Bank (Sidebar) -->
+        <aside class="w-1/4 lg:w-1/5 bg-gray-200 p-4 overflow-y-auto shadow-lg z-10">
+            <h2 class="text-lg font-semibold mb-4 border-b pb-2 text-gray-700">유기체 목록</h2>
+            <div id="organism-bank" class="grid grid-cols-2 gap-4">
+                <!-- Organisms will be dynamically injected here by JavaScript -->
+            </div>
+        </aside>
+
+        <!-- Ecosystem Canvas -->
+        <main class="flex-1 relative">
+            <div id="ecosystem-canvas" class="w-full h-full"></div>
+            <svg id="arrow-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                    </marker>
+                </defs>
+            </svg>
+            <div class="absolute bottom-4 right-4 z-10 flex space-x-2">
+                <button id="show-leaderboard-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    리더보드 보기
+                </button>
+                <button id="reset-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    초기화
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for level completion -->
+    <div id="level-complete-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-2xl text-center transform transition-all scale-95 opacity-0">
+            <h2 id="modal-title" class="text-3xl font-bold text-green-600 mb-4">레벨 클리어!</h2>
+            <p id="modal-message" class="text-gray-700 mb-6">다음 단계로 진행하세요.</p>
+            <button id="next-level-button" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                다음 레벨
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="leaderboard-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div class="bg-white p-8 rounded-lg shadow-2xl text-center w-full max-w-lg transform transition-all scale-95 opacity-0">
+            <h2 class="text-3xl font-bold text-green-600 mb-4">리더보드</h2>
+            <div class="flex justify-between items-center text-sm font-semibold text-gray-600 mb-2">
+                <span>순위</span>
+                <span>사용자 ID</span>
+                <span>점수</span>
+            </div>
+            <ul id="leaderboard-list" class="space-y-2 text-left">
+                <!-- Leaderboard items will be injected here -->
+            </ul>
+            <button id="close-leaderboard-button" class="mt-6 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                닫기
+            </button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDocs, addDoc, collection, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Initialization
+        // 이 부분은 Canvas 환경에서 자동으로 제공되는 전역 변수(__firebase_config, __app_id)를 사용하여 초기화됩니다.
+        // 이 변수들은 사용자에게 보이지 않지만, 백그라운드에서 Firebase 프로젝트를 올바르게 설정하는 데 사용됩니다.
+        setLogLevel('debug');
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        let userId = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const organismBank = document.getElementById('organism-bank');
+            const ecosystemCanvas = document.getElementById('ecosystem-canvas');
+            const arrowSvg = document.getElementById('arrow-svg');
+            const resetButton = document.getElementById('reset-button');
+            const scoreDisplay = document.getElementById('score-display');
+            const levelDisplay = document.getElementById('level-display');
+            const modal = document.getElementById('level-complete-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const nextLevelButton = document.getElementById('next-level-button');
+            const showLeaderboardButton = document.getElementById('show-leaderboard-button');
+            const leaderboardModal = document.getElementById('leaderboard-modal');
+            const leaderboardList = document.getElementById('leaderboard-list');
+            const closeLeaderboardButton = document.getElementById('close-leaderboard-button');
+            const userIdDisplay = document.getElementById('user-id-display').querySelector('span');
+            
+            // --- DATA ---
+            const levels = [
+                { // Level 1: Basic Forest
+                    organisms: [
+                        { id: 'grass', name: '풀', emoji: '🌾', type: 'producer' },
+                        { id: 'carrot', name: '당근', emoji: '🥕', type: 'producer' },
+                        { id: 'rabbit', name: '토끼', emoji: '🐇', type: 'primary-consumer', eats: ['grass', 'carrot'] },
+                        { id: 'fox', name: '여우', emoji: '🦊', type: 'secondary-consumer', eats: ['rabbit'] },
+                        { id: 'mushroom', name: '버섯', emoji: '🍄', type: 'decomposer', eats: ['*'] },
+                    ],
+                },
+                { // Level 2: More complex web
+                    organisms: [
+                        { id: 'grass', name: '풀', emoji: '🌾', type: 'producer' },
+                        { id: 'mouse', name: '쥐', emoji: '🐁', type: 'primary-consumer', eats: ['grass'] },
+                        { id: 'rabbit', name: '토끼', emoji: '🐇', type: 'primary-consumer', eats: ['grass'] },
+                        { id: 'snake', name: '뱀', emoji: '🐍', type: 'secondary-consumer', eats: ['mouse'] },
+                        { id: 'eagle', name: '독수리', emoji: '🦅', type: 'tertiary-consumer', eats: ['mouse', 'rabbit', 'snake'] },
+                    ],
+                },
+                { // Level 3: Savanna
+                    organisms: [
+                        { id: 'acacia', name: '아카시아', emoji: '🌳', type: 'producer' },
+                        { id: 'zebra', name: '얼룩말', emoji: '🦓', type: 'primary-consumer', eats: ['acacia'] },
+                        { id: 'gazelle', name: '가젤', emoji: '🦌', type: 'primary-consumer', eats: ['acacia'] },
+                        { id: 'lion', name: '사자', emoji: '🦁', type: 'secondary-consumer', eats: ['zebra', 'gazelle'] },
+                        { id: 'vulture', name: '독수리', emoji: '🦅', type: 'decomposer', eats: ['*'] },
+                    ],
+                }
+            ];
+
+            // --- STATE MANAGEMENT ---
+            let placedOrganisms = {};
+            let connections = [];
+            let startNode = null;
+            let instanceCounter = 0;
+            let score = 0;
+            let currentLevelIndex = 0;
+            let totalCorrectConnectionsInLevel = 0;
+            let madeCorrectConnections = new Set(); // To avoid duplicate counting
+            let isUserAuthenticated = false;
+
+            // Firebase Authentication
+            async function initializeAuth() {
+                try {
+                    // 환경 변수 __initial_auth_token이 있을 경우 커스텀 토큰으로 로그인 시도
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token.length > 0) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        // 없을 경우 익명 로그인
+                        await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Authentication failed:", error);
+                }
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    // 인증 성공 시 사용자 ID 설정
+                    userId = user.uid;
+                    userIdDisplay.textContent = userId;
+                    isUserAuthenticated = true;
+                }
+            });
+
+            // Firestore Functions
+            async function saveScore() {
+                if (!isUserAuthenticated) {
+                    console.warn("User not authenticated. Score not saved.");
+                    return;
+                }
+                try {
+                    // 공개 랭킹 데이터를 저장할 경로를 설정
+                    const scoresCollection = collection(db, `artifacts/${appId}/public/data/scores`);
+                    await addDoc(scoresCollection, {
+                        userId: userId,
+                        score: score,
+                        timestamp: serverTimestamp() // Firestore 서버 시간을 사용해 정확한 순위를 매깁니다.
+                    });
+                    console.log("Score saved successfully!");
+                } catch (error) {
+                    console.error("Error saving score:", error);
+                }
+            }
+            
+            async function getLeaderboard() {
+                try {
+                    const scoresCollection = collection(db, `artifacts/${appId}/public/data/scores`);
+                    // 점수를 기준으로 내림차순 정렬하여 상위 10개 문서를 가져오는 쿼리
+                    const q = query(scoresCollection, orderBy("score", "desc"), limit(10));
+                    const querySnapshot = await getDocs(q);
+                    const leaderboard = [];
+                    querySnapshot.forEach((doc) => {
+                        leaderboard.push(doc.data());
+                    });
+                    return leaderboard;
+                } catch (error) {
+                    console.error("Error fetching leaderboard:", error);
+                    return [];
+                }
+            }
+
+            function renderLeaderboard(leaderboardData) {
+                leaderboardList.innerHTML = '';
+                if (leaderboardData.length === 0) {
+                    leaderboardList.innerHTML = '<li class="text-center text-gray-500">리더보드가 비어있습니다.</li>';
+                    return;
+                }
+
+                leaderboardData.forEach((entry, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.className = `flex justify-between items-center p-2 rounded-md ${index % 2 === 0 ? 'bg-gray-100' : 'bg-white'}`;
+                    listItem.innerHTML = `
+                        <span class="font-bold text-lg">${index + 1}.</span>
+                        <span class="text-xs break-all">${entry.userId}</span>
+                        <span class="font-semibold text-blue-600">${entry.score}점</span>
+                    `;
+                    leaderboardList.appendChild(listItem);
+                });
+            }
+
+            // --- GAME LOGIC ---
+            function loadLevel(levelIndex) {
+                // Clear everything
+                ecosystemCanvas.innerHTML = '';
+                organismBank.innerHTML = '';
+                arrowSvg.innerHTML = `<defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#333" /></marker></defs>`;
+                
+                // Reset state
+                placedOrganisms = {};
+                connections = [];
+                startNode = null;
+                instanceCounter = 0;
+                madeCorrectConnections.clear();
+                
+                // Load level data
+                const levelData = levels[levelIndex];
+                populateBank(levelData.organisms);
+                
+                // Calculate total possible connections for this level (excluding decomposers)
+                totalCorrectConnectionsInLevel = levelData.organisms
+                    .filter(org => org.eats && org.eats[0] !== '*')
+                    .reduce((sum, org) => sum + org.eats.length, 0);
+
+                // Update UI
+                levelDisplay.textContent = `레벨 ${levelIndex + 1}`;
+                updateScoreDisplay();
+                hideModal();
+            }
+
+            function populateBank(organismsForLevel) {
+                organismsForLevel.forEach(org => {
+                    const orgEl = document.createElement('div');
+                    orgEl.className = 'organism flex flex-col items-center p-2 bg-white rounded-lg shadow-md hover:shadow-lg';
+                    orgEl.draggable = true;
+                    orgEl.dataset.id = org.id;
+                    orgEl.innerHTML = `<span class="text-4xl">${org.emoji}</span><span class="text-sm font-medium mt-1">${org.name}</span>`;
+                    orgEl.addEventListener('dragstart', handleDragStart);
+                    organismBank.appendChild(orgEl);
+                });
+            }
+
+            function handleDragStart(e) {
+                if (e.target.draggable === false) {
+                    e.preventDefault();
+                    return;
+                }
+                e.dataTransfer.setData('text/plain', e.target.closest('.organism').dataset.id);
+            }
+
+            ecosystemCanvas.addEventListener('dragover', e => e.preventDefault());
+
+            ecosystemCanvas.addEventListener('drop', e => {
+                e.preventDefault();
+                const originalId = e.dataTransfer.getData('text/plain');
+                const bankEl = organismBank.querySelector(`.organism[data-id='${originalId}']`);
+                if (!bankEl || bankEl.draggable === false) return;
+                
+                const organismData = levels[currentLevelIndex].organisms.find(org => org.id === originalId);
+                if (organismData) {
+                    createOrganismOnCanvas(organismData, e.clientX, e.clientY);
+                    bankEl.classList.add('opacity-40', 'cursor-not-allowed');
+                    bankEl.draggable = false;
+                }
+            });
+            
+            function createOrganismOnCanvas(orgData, clientX, clientY) {
+                const instanceId = `instance_${instanceCounter++}`;
+                const rect = ecosystemCanvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+
+                const placedEl = document.createElement('div');
+                placedEl.id = instanceId;
+                placedEl.className = 'placed-organism flex flex-col items-center';
+                placedEl.dataset.originalId = orgData.id;
+                placedEl.innerHTML = `<span class="text-4xl pointer-events-none">${orgData.emoji}</span><span class="text-sm font-medium mt-1 pointer-events-none">${orgData.name}</span>`;
+                
+                ecosystemCanvas.appendChild(placedEl);
+                
+                const elWidth = placedEl.offsetWidth;
+                const elHeight = placedEl.offsetHeight;
+                const finalX = x - elWidth / 2;
+                const finalY = y - elHeight / 2;
+
+                placedEl.style.left = `${finalX}px`;
+                placedEl.style.top = `${finalY}px`;
+
+                placedOrganisms[instanceId] = { el: placedEl, data: orgData, x: finalX + elWidth / 2, y: finalY + elHeight / 2 };
+                placedEl.addEventListener('click', handleOrganismClick);
+                makeElementDraggable(placedEl);
+            }
+
+            function handleOrganismClick(e) {
+                const clickedEl = e.currentTarget;
+                if (!startNode) {
+                    startNode = clickedEl;
+                    startNode.classList.add('selected');
+                } else {
+                    if (startNode !== clickedEl) {
+                        const connectionKey = `${startNode.id}->${clickedEl.id}`;
+                        if (!connections.some(c => c.id === connectionKey)) {
+                            const preyNodeInfo = placedOrganisms[startNode.id];
+                            const predatorNodeInfo = placedOrganisms[clickedEl.id];
+                            const preyId = preyNodeInfo.data.id;
+                            const predatorData = predatorNodeInfo.data;
+                            const isDecomposer = predatorData.eats && predatorData.eats[0] === '*';
+                            const isCorrect = isDecomposer || (predatorData.eats && predatorData.eats.includes(preyId));
+                            
+                            if (isCorrect) {
+                                score += 100;
+                                showScoreFeedback('+100', predatorNodeInfo.el, 'correct');
+                                const newConnection = { id: connectionKey, from: startNode.id, to: clickedEl.id };
+                                connections.push(newConnection);
+                                drawArrow(newConnection);
+
+                                if (!madeCorrectConnections.has(connectionKey) && !isDecomposer) {
+                                    madeCorrectConnections.add(connectionKey);
+                                    if (madeCorrectConnections.size >= totalCorrectConnectionsInLevel) {
+                                        setTimeout(levelComplete, 500);
+                                    }
+                                }
+                            } else {
+                                score -= 50;
+                                showScoreFeedback('-50', predatorNodeInfo.el, 'incorrect');
+                            }
+                            updateScoreDisplay();
+                        }
+                    }
+                    if(startNode) {
+                        startNode.classList.remove('selected');
+                        startNode = null;
+                    }
+                }
+            }
+
+            function levelComplete() {
+                currentLevelIndex++;
+                if (currentLevelIndex < levels.length) {
+                    showModal('레벨 클리어!', `총점: ${score}점. 다음 단계로 진행하세요.`, '다음 레벨');
+                } else {
+                    saveScore();
+                    showModal('축하합니다!', `모든 레벨을 완료했습니다! 최종 점수: ${score}점. 리더보드를 확인해보세요.`, '다시 시작');
+                }
+            }
+            
+            nextLevelButton.addEventListener('click', () => {
+                if (currentLevelIndex >= levels.length) {
+                    currentLevelIndex = 0; // Restart game
+                    score = 0;
+                }
+                loadLevel(currentLevelIndex);
+            });
+
+            resetButton.addEventListener('click', () => {
+                score = 0;
+                loadLevel(currentLevelIndex);
+            });
+
+            showLeaderboardButton.addEventListener('click', async () => {
+                showLeaderboardModal();
+            });
+
+            closeLeaderboardButton.addEventListener('click', () => {
+                hideLeaderboardModal();
+            });
+
+            // --- UI AND DRAWING (UNCHANGED and HELPER functions) ---
+            ecosystemCanvas.addEventListener('click', (e) => { if (e.target === ecosystemCanvas && startNode) { startNode.classList.remove('selected'); startNode = null; } });
+            function updateScoreDisplay() { scoreDisplay.textContent = `점수: ${score}`; }
+            function showModal(title, message, buttonText) {
+                modalTitle.textContent = title;
+                modalMessage.textContent = message;
+                nextLevelButton.textContent = buttonText;
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.querySelector('div').classList.remove('scale-95', 'opacity-0'), 10);
+            }
+            function hideModal() {
+                modal.querySelector('div').classList.add('scale-95', 'opacity-0');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+            }
+            function showLeaderboardModal() {
+                leaderboardModal.classList.remove('hidden');
+                getLeaderboard().then(renderLeaderboard);
+                setTimeout(() => leaderboardModal.querySelector('div').classList.remove('scale-95', 'opacity-0'), 10);
+            }
+            function hideLeaderboardModal() {
+                leaderboardModal.querySelector('div').classList.add('scale-95', 'opacity-0');
+                setTimeout(() => leaderboardModal.classList.add('hidden'), 200);
+            }
+            function showScoreFeedback(text, targetElement, type) { const feedbackEl = document.createElement('div'); feedbackEl.textContent = text; feedbackEl.className = 'score-feedback'; feedbackEl.style.color = type === 'correct' ? '#16A34A' : '#DC2626'; const targetRect = targetElement.getBoundingClientRect(); const canvasRect = ecosystemCanvas.getBoundingClientRect(); feedbackEl.style.left = `${targetRect.left - canvasRect.left + targetRect.width / 2 - 20}px`; feedbackEl.style.top = `${targetRect.top - canvasRect.top}px`; feedbackEl.style.opacity = '1'; ecosystemCanvas.appendChild(feedbackEl); setTimeout(() => { feedbackEl.style.transform = 'translateY(-50px)'; feedbackEl.style.opacity = '0'; }, 50); setTimeout(() => { feedbackEl.remove(); }, 1050); }
+            function drawArrow(connection) { const fromNode = placedOrganisms[connection.from]; const toNode = placedOrganisms[connection.to]; if (!fromNode || !toNode) return; const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.id = connection.id; line.setAttribute('x1', fromNode.x); line.setAttribute('y1', fromNode.y); line.setAttribute('x2', toNode.x); line.setAttribute('y2', toNode.y); line.setAttribute('stroke', '#333'); line.setAttribute('stroke-width', '2'); line.setAttribute('marker-end', 'url(#arrowhead)'); arrowSvg.appendChild(line); }
+            function updateArrowsForNode(nodeId) { const node = placedOrganisms[nodeId]; if (!node) return; connections.forEach(conn => { const line = document.getElementById(conn.id); if (!line) return; if (conn.from === nodeId) { line.setAttribute('x1', node.x); line.setAttribute('y1', node.y); } if (conn.to === nodeId) { line.setAttribute('x2', node.x); line.setAttribute('y2', node.y); } }); }
+            function makeElementDraggable(element) { let isDragging = false, offsetX, offsetY; const onMouseDown = (e) => { if (startNode) return; e.preventDefault(); isDragging = true; const rect = element.getBoundingClientRect(); offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top; element.style.zIndex = 100; document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); }; const onMouseMove = (e) => { if (!isDragging) return; e.preventDefault(); const canvasRect = ecosystemCanvas.getBoundingClientRect(); let newX = e.clientX - canvasRect.left - offsetX; let newY = e.clientY - canvasRect.top - offsetY; newX = Math.max(0, Math.min(newX, canvasRect.width - element.offsetWidth)); newY = Math.max(0, Math.min(newY, canvasRect.height - element.offsetHeight)); element.style.left = `${newX}px`; element.style.top = `${newY}px`; const nodeData = placedOrganisms[element.id]; nodeData.x = newX + element.offsetWidth / 2; nodeData.y = newY + element.offsetHeight / 2; updateArrowsForNode(element.id); }; const onMouseUp = () => { isDragging = false; element.style.zIndex = 'auto'; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); }; element.addEventListener('mousedown', onMouseDown); }
+            
+            // --- START THE APP ---
+            initializeAuth();
+            loadLevel(currentLevelIndex);
+        });
+    </script>
+</body>
+</html>
