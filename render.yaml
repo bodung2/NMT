@@ -1,0 +1,9 @@
+# Render.com 무료 배포 설정 (친구 퀴즈 배틀)
+services:
+  - type: web
+    name: friend-quiz-battle
+    runtime: node
+    plan: free
+    rootDir: quiz-battle
+    buildCommand: npm install --omit=dev
+    startCommand: npm start

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>친구 퀴즈 배틀</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="conn" class="conn hidden">연결이 끊겼어요. 다시 연결하는 중…</div>
+
+  <header class="topbar hidden" id="topbar">
+    <span class="brand">🧩 <span class="txt">친구 퀴즈 배틀</span></span>
+    <span class="spacer"></span>
+    <span class="pill" id="tb-name"></span>
+    <span class="pill" id="tb-score">0점</span>
+    <span class="pill hidden" id="tb-streak"></span>
+  </header>
+
+  <main class="wrap">
+
+    <!-- 1. 입장 -->
+    <section id="v-join">
+      <div class="center" style="margin:28px 0 18px">
+        <div style="font-size:4rem">🧩</div>
+        <h1>친구 퀴즈 배틀</h1>
+        <p class="muted">내가 낸 문제로 친구들과 겨뤄요!</p>
+      </div>
+      <form class="card" id="join-form" autocomplete="off">
+        <label for="join-code">입장 코드</label>
+        <input id="join-code" class="code-input" type="text" inputmode="numeric" maxlength="5" placeholder="0000" required>
+        <label for="join-name">내 이름</label>
+        <input id="join-name" type="text" maxlength="12" placeholder="예) 김하늘" required>
+        <p class="error-text" id="join-error"></p>
+        <button class="btn big block" type="submit">입장하기 🚀</button>
+      </form>
+    </section>
+
+    <!-- 2. 문제 만들기 -->
+    <section id="v-create" class="hidden">
+      <div class="card">
+        <div class="row">
+          <h2 style="margin:0">✏️ 문제 만들기</h2>
+          <span class="spacer"></span>
+          <span class="pill light" id="q-count">0 / 3</span>
+        </div>
+        <p class="muted small" style="margin:.5rem 0 1rem">친구들이 풀 문제를 내 보세요. 정답이 분명한 문제가 좋은 문제예요!</p>
+
+        <form id="q-form" autocomplete="off">
+          <div class="tabs" id="type-tabs">
+            <button type="button" class="tab active" data-type="short"><span class="emoji">✍️</span>단답형</button>
+            <button type="button" class="tab" data-type="choice"><span class="emoji">🔢</span>객관식</button>
+            <button type="button" class="tab" data-type="sentence"><span class="emoji">📝</span>문장형</button>
+          </div>
+
+          <label for="q-text">문제</label>
+          <textarea id="q-text" maxlength="200" placeholder="예) 우리나라의 수도는 어디일까요?" required></textarea>
+
+          <div data-for="short">
+            <label for="q-short">정답</label>
+            <input id="q-short" type="text" maxlength="100" placeholder="예) 서울">
+            <p class="muted small">정답이 여러 개면 쉼표(,)로 나눠 써요. 예) 서울, 서울특별시<br>띄어쓰기·대소문자는 상관없이 채점돼요.</p>
+          </div>
+
+          <div data-for="choice" class="hidden">
+            <label>보기 (정답 번호를 눌러 초록색으로 표시하세요)</label>
+            <div id="choice-edit"></div>
+          </div>
+
+          <div data-for="sentence" class="hidden">
+            <label for="q-sentence">모범 답안</label>
+            <textarea id="q-sentence" maxlength="300" placeholder="예) 식물은 햇빛을 받아 광합성을 해서 양분을 만든다."></textarea>
+            <label for="q-keywords">채점 핵심 단어</label>
+            <input id="q-keywords" type="text" maxlength="100" placeholder="예) 햇빛, 광합성, 양분">
+            <p class="muted small">친구의 답에 핵심 단어가 <b>모두</b> 들어 있으면 정답이에요. 쉼표(,)로 나눠 써요.</p>
+          </div>
+
+          <p class="error-text" id="q-error"></p>
+          <button class="btn big block" type="submit" id="q-submit">문제 내기 ✨</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>📚 내가 낸 문제</h3>
+        <ul class="list" id="my-questions"></ul>
+      </div>
+
+      <div class="card waiting" style="padding:20px">
+        <span class="big-emoji" style="font-size:2.4rem">⏳</span>
+        <p class="muted" style="margin:.25rem 0 0">문제를 다 냈다면, 선생님이 <b>PLAY</b>를 누를 때까지 기다려요.</p>
+      </div>
+    </section>
+
+    <!-- 3. 기다리기 (일시정지 / 문제 소진) -->
+    <section id="v-wait" class="hidden">
+      <div class="card waiting">
+        <span class="big-emoji" id="wait-emoji">⏸️</span>
+        <h2 id="wait-title">잠시 멈췄어요</h2>
+        <p class="muted" id="wait-desc">선생님이 다시 시작할 때까지 기다려요.</p>
+      </div>
+      <div class="card" id="wait-rank-card">
+        <h3>🏆 지금 순위</h3>
+        <ol class="rank-list" id="wait-rank"></ol>
+      </div>
+    </section>
+
+    <!-- 4. 문제 풀기 -->
+    <section id="v-question" class="hidden">
+      <div class="card">
+        <div class="row small muted">
+          <span class="badge" id="qq-type"></span>
+          <span id="qq-num"></span>
+          <span class="spacer"></span>
+          <b id="qq-sec" style="font-size:1.2rem;color:var(--ink)"></b>
+        </div>
+        <div class="timer" id="qq-timer" style="margin-top:10px"><div></div></div>
+        <div class="question-text fun" id="qq-text"></div>
+
+        <div id="qq-choice" class="answers hidden"></div>
+
+        <form id="qq-form" class="hidden" autocomplete="off">
+          <input id="qq-input" type="text" maxlength="100" placeholder="정답을 입력하세요">
+          <textarea id="qq-area" maxlength="300" placeholder="문장으로 답을 써 보세요" class="hidden"></textarea>
+          <button class="btn big block" type="submit" style="margin-top:12px">제출 👉</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 5. 결과 -->
+    <section id="v-result" class="hidden">
+      <div class="card result" id="rs-card">
+        <div class="big-emoji" id="rs-emoji"></div>
+        <h1 id="rs-title"></h1>
+        <div id="rs-points"></div>
+        <div class="correct-answer" id="rs-answer"></div>
+      </div>
+      <div class="card row" style="gap:1.5rem">
+        <div>
+          <div class="muted small">내 점수</div>
+          <div class="fun" style="font-size:1.8rem" id="rs-score"></div>
+        </div>
+        <div>
+          <div class="muted small">순위</div>
+          <div class="fun" style="font-size:1.8rem" id="rs-rank"></div>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn big" id="rs-next">다음 문제 ▶</button>
+      </div>
+    </section>
+
+    <!-- 6. 끝 -->
+    <section id="v-end" class="hidden">
+      <div class="card center">
+        <div style="font-size:4.5rem" id="end-emoji">🏁</div>
+        <h1>게임 끝!</h1>
+        <p class="fun" style="font-size:1.6rem;margin:.25rem 0" id="end-me"></p>
+        <p class="muted" id="end-detail"></p>
+      </div>
+      <div class="card">
+        <h3>🏆 최종 순위</h3>
+        <ol class="rank-list" id="end-rank"></ol>
+      </div>
+    </section>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/student.js"></script>
+</body>
+</html>
