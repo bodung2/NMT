@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>교사 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="conn" class="conn hidden">서버와 연결이 끊겼어요. 다시 연결하는 중…</div>
+
+  <header class="topbar">
+    <span class="brand">🧩 친구 퀴즈 배틀 · 교사 대시보드</span>
+    <span class="spacer"></span>
+    <span class="phase-badge hidden" id="phase-badge"></span>
+  </header>
+
+  <!-- 방 만들기 -->
+  <main class="wrap" id="v-start">
+    <div class="card center" style="margin-top:40px">
+      <div style="font-size:4rem">👩‍🏫</div>
+      <h1>수업 방 만들기</h1>
+      <p class="muted">방을 만들면 학생들이 입장 코드로 들어와 문제를 낼 수 있어요.</p>
+      <button class="btn big" id="create-room">새 방 만들기 ✨</button>
+      <p class="error-text" id="start-error"></p>
+    </div>
+  </main>
+
+  <!-- 대시보드 -->
+  <main class="wrap wide hidden" id="v-dash">
+    <div class="t-grid">
+      <aside>
+        <div class="card center">
+          <div class="muted small">입장 코드</div>
+          <div class="join-code" id="code"></div>
+          <div class="qr"><img id="qr" alt="입장 QR 코드"></div>
+          <div class="small muted">학생 접속 주소</div>
+          <div class="url" id="join-url"></div>
+        </div>
+
+        <div class="card">
+          <h3>🎮 진행</h3>
+          <div id="controls" style="display:grid;gap:8px"></div>
+          <p class="muted small" id="control-hint" style="margin-bottom:0"></p>
+        </div>
+
+        <div class="card">
+          <h3>⚙️ 설정</h3>
+          <label for="set-time">문제당 제한 시간</label>
+          <select id="set-time">
+            <option value="10">10초</option>
+            <option value="15">15초</option>
+            <option value="20">20초</option>
+            <option value="30">30초</option>
+            <option value="45">45초</option>
+            <option value="60">60초</option>
+          </select>
+          <p class="muted small" style="margin:.25rem 0 0">문장형은 2배 시간이 주어져요.</p>
+          <label for="set-max">학생 1명당 낼 수 있는 문제 수</label>
+          <select id="set-max"></select>
+          <details style="margin-top:14px">
+            <summary class="small" style="cursor:pointer;font-weight:700">📐 점수 규칙</summary>
+            <ul class="small muted" id="score-rules" style="padding-left:1.2rem"></ul>
+          </details>
+        </div>
+
+        <div class="card">
+          <h3>🧹 관리</h3>
+          <div style="display:grid;gap:8px">
+            <button class="btn ghost" id="reset-scores">점수 초기화하고 다시 하기</button>
+            <button class="btn ghost" id="new-room">새 방 만들기</button>
+          </div>
+        </div>
+      </aside>
+
+      <section>
+        <div class="card stats">
+          <div class="stat"><b id="st-players">0</b><span class="small muted">참여 학생</span></div>
+          <div class="stat"><b id="st-online">0</b><span class="small muted">접속 중</span></div>
+          <div class="stat"><b id="st-questions">0</b><span class="small muted">만든 문제</span></div>
+        </div>
+
+        <div class="t-tabs" id="tabs">
+          <button data-tab="students" class="active">👥 학생</button>
+          <button data-tab="questions">📚 문제</button>
+          <button data-tab="ranking">🏆 순위</button>
+          <span class="spacer"></span>
+          <button id="fullscreen">⛶ 크게 보기</button>
+        </div>
+
+        <div class="card" id="tab-students">
+          <h3>👥 학생 목록 <span class="muted small">(숫자 = 낸 문제 수)</span></h3>
+          <div class="student-chips" id="students"></div>
+          <details style="margin-top:16px">
+            <summary class="small" style="cursor:pointer;font-weight:700">학생 내보내기</summary>
+            <p class="small muted">내보낸 학생의 문제도 함께 지워져요.</p>
+            <div class="student-chips" id="kick-list"></div>
+          </details>
+        </div>
+
+        <div class="card hidden" id="tab-questions">
+          <h3>📚 학생들이 만든 문제</h3>
+          <p class="small muted" style="margin-top:0">부적절하거나 정답이 이상한 문제는 지워 주세요. 정답률은 게임 중에 채워져요.</p>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr><th>유형</th><th>문제</th><th>정답</th><th>출제</th><th style="white-space:nowrap">정답률</th><th></th></tr></thead>
+              <tbody id="questions"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card hidden" id="tab-ranking">
+          <div id="podium"></div>
+          <ol class="rank-list" id="ranking"></ol>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/teacher.js"></script>
+</body>
+</html>

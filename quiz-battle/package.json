@@ -1,0 +1,22 @@
+{
+  "name": "friend-quiz-battle",
+  "version": "1.0.0",
+  "description": "학생들이 직접 문제를 내고, 친구들의 문제를 랜덤으로 풀며 점수를 겨루는 수업용 실시간 퀴즈",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}
