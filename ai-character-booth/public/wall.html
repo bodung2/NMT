@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>전시 벽 · AI 캐릭터 변신 부스</title>
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    body { overflow-x: hidden; }
+    .wall-head { display: flex; align-items: center; gap: 1.5rem; padding: 1rem 1.5rem; }
+    .wall-head h1 { font-size: 2.6rem; }
+    .wall-head img { width: 130px; background: #fff; border-radius: 14px; padding: 6px; box-shadow: var(--shadow); }
+    .wall { columns: 5 220px; column-gap: 1rem; padding: 0 1.5rem 2rem; }
+    .w-item { break-inside: avoid; background: #fff; border-radius: 18px; box-shadow: var(--shadow); margin-bottom: 1rem; overflow: hidden; animation: pop .6s ease-out; }
+    .w-item img { width: 100%; display: block; }
+    .w-item div { padding: .5rem .8rem .7rem; font-family: 'Jua', sans-serif; font-size: 1.15rem; }
+    .w-item small { display: block; color: var(--muted); font-family: 'Noto Sans KR', sans-serif; font-size: .8rem; }
+    @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="wall-head">
+    <div class="grow">
+      <h1 id="title">AI 캐릭터 변신 부스</h1>
+      <p class="fun" style="font-size:1.4rem;margin:0">📱 QR을 찍고 내 캐릭터도 변신시켜 보세요!</p>
+    </div>
+    <img src="/qr.svg" alt="학생 접속 QR" />
+  </div>
+  <div class="wall" id="wall"></div>
+  <script>
+    (() => {
+      const shown = new Set();
+      const wall = document.getElementById('wall');
+      async function load() {
+        try {
+          const d = await (await fetch('/api/wall')).json();
+          document.getElementById('title').textContent = d.title;
+          const ids = new Set(d.items.map((x) => x.id));
+          for (const el of [...wall.children]) if (!ids.has(el.dataset.id)) { wall.removeChild(el); shown.delete(el.dataset.id); }
+          for (const it of [...d.items].reverse()) {
+            if (shown.has(it.id)) continue;
+            shown.add(it.id);
+            const el = document.createElement('div');
+            el.className = 'w-item';
+            el.dataset.id = it.id;
+            el.innerHTML = '<img loading="lazy" alt="" /><div><span></span><small></small></div>';
+            el.querySelector('img').src = it.resultUrl;
+            el.querySelector('span').textContent = it.charName || `${it.name}의 캐릭터`;
+            el.querySelector('small').textContent = `${it.styleEmoji} ${it.styleName} · ${it.name}`;
+            wall.prepend(el);
+          }
+        } catch { /* 다음에 다시 */ }
+      }
+      load();
+      setInterval(load, 5000);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교사 화면 · AI 캐릭터 변신 부스</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- 로그인 -->
+  <div class="wrap hidden" id="login">
+    <header class="top"><div class="logo">🔐</div><h1>선생님 화면</h1></header>
+    <div class="card">
+      <label for="pw">선생님 비밀번호</label>
+      <input type="password" id="pw" />
+      <button class="block" id="loginBtn">들어가기</button>
+      <div id="loginMsg"></div>
+    </div>
+  </div>
+
+  <div class="t-wrap hidden" id="main">
+    <div class="t-head">
+      <div class="logo" style="font-size:2.2rem">🪄</div>
+      <div class="grow">
+        <h1 id="tTitle">AI 캐릭터 변신 부스</h1>
+        <div class="muted small" id="tStats"></div>
+      </div>
+      <button class="ghost small" id="bigQr">📱 QR 크게 보기</button>
+      <a class="btn ghost small" href="/wall" target="_blank">🖼️ 전시 벽 열기</a>
+    </div>
+
+    <div class="t-grid">
+      <aside>
+        <div class="card">
+          <h3>학생 접속 QR</h3>
+          <div class="qr"><img src="/qr.svg" alt="학생 접속 QR" /></div>
+          <p class="url" id="studentUrl"></p>
+          <div id="urlWarn"></div>
+        </div>
+
+        <div class="card">
+          <h3>연결 상태</h3>
+          <ul class="status-list">
+            <li><span>AI (Gemini)</span><span id="stAi" class="pill"></span></li>
+            <li><span>패들렛 API 키</span><span id="stPKey" class="pill"></span></li>
+            <li><span>패들렛 전송</span><span id="stPadlet" class="pill"></span></li>
+            <li><span>AI 작업 중 / 대기</span><span id="stQueue" class="pill"></span></li>
+          </ul>
+          <button class="ghost small" id="testPadlet" style="margin-top:.6rem">🔌 패들렛 연결 테스트</button>
+          <div id="testMsg"></div>
+        </div>
+
+        <div class="card">
+          <h3>부스 설정</h3>
+          <label for="sTitle">부스 이름</label>
+          <input type="text" id="sTitle" maxlength="40" />
+          <label for="sBoard">패들렛 보드 ID</label>
+          <input type="text" id="sBoard" placeholder="예: abcd1234efgh5678" />
+          <label style="font-weight:400;display:flex;gap:.4rem;align-items:center">
+            <input type="checkbox" id="sPadletOn" /> 학생이 보내면 패들렛에 자동으로 올리기
+          </label>
+          <label for="sTries">1인당 변신 횟수</label>
+          <input type="number" id="sTries" min="1" max="20" />
+          <label>쓸 스타일</label>
+          <div class="style-checks" id="sStyles"></div>
+          <button class="block" id="saveSettings">💾 설정 저장</button>
+          <div id="setMsg"></div>
+        </div>
+
+        <div class="card">
+          <h3>인쇄 설정</h3>
+          <label for="pSize">용지 크기</label>
+          <select id="pSize">
+            <option value="4x6">10×15cm (4×6인치 포토용지)</option>
+            <option value="postcard">엽서 100×148mm (셀피 등)</option>
+            <option value="card">카드 54×86mm (셀피 카드 사이즈)</option>
+            <option value="a4">A4 (일반 프린터)</option>
+          </select>
+          <label style="font-weight:400;display:flex;gap:.4rem;align-items:center">
+            <input type="checkbox" id="pOrig" checked /> 원래 그림도 작게 같이 넣기
+          </label>
+          <label style="font-weight:400;display:flex;gap:.4rem;align-items:center">
+            <input type="checkbox" id="pText" checked /> 이름·스타일 글씨 넣기
+          </label>
+        </div>
+
+        <div class="card">
+          <h3>관리</h3>
+          <button class="ghost small" id="download">📦 보낸 작품 모두 내려받기 (ZIP)</button>
+          <p class="muted small" style="margin:.3rem 0 .6rem">무료 서버는 다시 켜지면 사진이 지워질 수 있어요. 행사가 끝나면 꼭 내려받으세요.</p>
+          <button class="ghost small" id="resetTries">🔁 학생 변신 횟수 초기화</button>
+          <button class="danger small" id="clearAll" style="margin-top:.5rem">🗑️ 작품 전체 지우기</button>
+        </div>
+      </aside>
+
+      <main>
+        <div class="tabs" id="tabs">
+          <button data-f="queue" class="on">🖨️ 인쇄 대기</button>
+          <button data-f="sent">📤 보낸 작품 전체</button>
+          <button data-f="all">🗂️ 만든 것 전체(미전송 포함)</button>
+          <button data-f="error">⚠️ 패들렛 실패</button>
+        </div>
+        <div class="gallery" id="gallery"></div>
+      </main>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="qrOverlay">
+    <div>
+      <h1 id="ovTitle">AI 캐릭터 변신 부스</h1>
+      <p class="fun" style="font-size:1.6rem">📱 카메라로 QR을 찍어 들어오세요!</p>
+      <img src="/qr.svg" alt="학생 접속 QR" />
+      <p class="url" id="ovUrl" style="font-size:1.2rem"></p>
+      <button class="ghost" id="closeQr">닫기</button>
+    </div>
+  </div>
+
+  <script src="/teacher.js"></script>
+</body>
+</html>

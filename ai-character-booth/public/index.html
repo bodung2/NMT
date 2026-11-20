@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI 캐릭터 변신 부스</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="logo">🪄</div>
+      <h1 id="title">AI 캐릭터 변신 부스</h1>
+      <p class="muted small">내가 그린 캐릭터를 AI가 새로운 모습으로 바꿔 줘요!</p>
+    </header>
+
+    <div class="steps" id="steps"><span>1</span><span>2</span><span>3</span><span>4</span></div>
+    <div id="global-msg"></div>
+
+    <!-- 1. 소개 -->
+    <section class="card step" data-step="1">
+      <h2>1. 나와 내 캐릭터 소개</h2>
+      <label for="name">내 이름(별명) <span class="muted small">· 필수</span></label>
+      <input type="text" id="name" maxlength="12" placeholder="예: 3반 김하늘" autocomplete="off" />
+      <label for="charName">캐릭터 이름 <span class="muted small">· 선택</span></label>
+      <input type="text" id="charName" maxlength="20" placeholder="예: 축구왕 번개" autocomplete="off" />
+      <label for="intro">캐릭터 한 줄 소개 <span class="muted small">· 학습지에 쓴 취미·특기를 짧게</span></label>
+      <input type="text" id="intro" maxlength="80" placeholder="예: 축구를 좋아하고 노래를 잘 불러요" autocomplete="off" />
+      <button class="block" id="to2">다음 ▶</button>
+    </section>
+
+    <!-- 2. 사진 -->
+    <section class="card step hidden" data-step="2">
+      <h2>2. 내 그림 찍기 📸</h2>
+      <div class="photo-box" id="photoBox">
+        <div class="muted">
+          <div class="big-emoji">🖼️</div>
+          아래 버튼을 눌러<br />학습지의 캐릭터를 찍어 주세요
+        </div>
+      </div>
+      <ul class="tips">
+        <li>캐릭터가 화면에 <b>가득</b> 차게 가까이 찍어요</li>
+        <li>종이를 평평하게, <b>그림자</b>가 생기지 않게 해요</li>
+        <li>밝은 곳에서 찍으면 더 멋지게 나와요</li>
+      </ul>
+      <input type="file" id="camera" accept="image/*" capture="environment" class="hidden" />
+      <input type="file" id="album" accept="image/*" class="hidden" />
+      <button class="block" id="shoot">📷 카메라로 찍기</button>
+      <button class="block ghost" id="pick">🗂️ 앨범에서 고르기</button>
+      <div class="row" style="margin-top:.6rem">
+        <button class="ghost grow" id="back1">◀ 이전</button>
+        <button class="grow" id="to3" disabled>다음 ▶</button>
+      </div>
+    </section>
+
+    <!-- 3. 스타일 -->
+    <section class="card step hidden" data-step="3">
+      <h2>3. 어떤 모습으로 변신할까? ✨</h2>
+      <div class="styles" id="styles"></div>
+      <p class="muted small center" id="triesInfo"></p>
+      <button class="block purple" id="go" disabled>🪄 AI로 변신시키기!</button>
+      <button class="block ghost" id="back2">◀ 사진 다시 찍기</button>
+    </section>
+
+    <!-- 기다리기 -->
+    <section class="card step hidden" data-step="wait">
+      <div class="magic">
+        <div class="wand">🪄</div>
+        <h2 id="waitMsg">AI가 그림을 살펴보는 중…</h2>
+        <div class="bar"><div id="bar"></div></div>
+        <p class="muted small">보통 10~30초 걸려요. 화면을 끄지 말고 기다려 주세요!</p>
+      </div>
+    </section>
+
+    <!-- 4. 결과 -->
+    <section class="card step hidden" data-step="4">
+      <h2 class="center">짜잔! 변신 완료 🎉</h2>
+      <div class="compare">
+        <figure><img id="resOrig" alt="내가 그린 그림" /><figcaption>내 그림</figcaption></figure>
+        <figure><img id="resAi" alt="AI가 바꾼 그림" /><figcaption id="resStyle"></figcaption></figure>
+      </div>
+      <div id="sendArea">
+        <button class="block" id="send">📤 패들렛에 보내기</button>
+        <button class="block ghost" id="again">🔄 다른 스타일로 다시 만들기</button>
+        <p class="muted small center" id="triesInfo2"></p>
+      </div>
+      <div id="doneArea" class="hidden center">
+        <div class="big-emoji">💌</div>
+        <h2>보냈어요!</h2>
+        <p id="doneMsg">부스 선생님이 사진으로 뽑아 줄 거예요. 조금만 기다려 주세요!</p>
+        <a class="btn block ghost" id="save" download>💾 내 휴대폰에 저장하기</a>
+        <p class="muted small">저장이 안 되면 그림을 꾹 눌러서 저장해요.</p>
+        <button class="block purple" id="restart">처음으로</button>
+      </div>
+    </section>
+  </div>
+  <script src="/student.js"></script>
+</body>
+</html>
