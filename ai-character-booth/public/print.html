@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>인쇄</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet" />
+  <style id="pageStyle"></style>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: #ddd; font-family: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+    .bar { padding: 10px; text-align: center; font-family: system-ui, sans-serif; }
+    .bar button { font-size: 16px; padding: 8px 14px; margin: 0 4px; border-radius: 10px; border: 0; background: #ff6b4a; color: #fff; cursor: pointer; }
+    .bar button.ghost { background: #fff; color: #333; }
+    .sheet {
+      background: #fff;
+      margin: 0 auto 20px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, .2);
+    }
+    .art { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+    .art .ai { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .art .orig {
+      position: absolute; left: 3%; bottom: 3%; width: 26%;
+      border: 1.2mm solid #fff; border-radius: 2mm; box-shadow: 0 .5mm 2mm rgba(0, 0, 0, .3); background: #fff;
+      transform: rotate(-4deg);
+    }
+    .foot { text-align: center; padding: 1.5% 4% 2.5%; line-height: 1.15; }
+    .foot .who { color: #2a2338; }
+    .foot .sub { color: #8a7f99; }
+    @media print {
+      html, body { background: #fff; }
+      .bar { display: none; }
+      .sheet { margin: 0; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <button id="printBtn">🖨️ 인쇄</button>
+    <button class="ghost" onclick="window.close()">닫기</button>
+    <div id="msg" style="margin-top:6px;color:#555;font-size:14px">그림을 불러오는 중…</div>
+  </div>
+  <div class="sheet" id="sheet">
+    <div class="art"><img class="ai" id="ai" alt="" /><img class="orig" id="orig" alt="" /></div>
+    <div class="foot" id="foot">
+      <div class="who" id="who"></div>
+      <div class="sub" id="sub"></div>
+    </div>
+  </div>
+  <script>
+    (async () => {
+      const q = new URLSearchParams(location.search);
+      const SIZES = {
+        '4x6': { page: '4in 6in', w: 101.6, h: 152.4, pad: 4 },
+        postcard: { page: '100mm 148mm', w: 100, h: 148, pad: 4 },
+        card: { page: '54mm 86mm', w: 54, h: 86, pad: 2.5 },
+        a4: { page: 'A4', w: 210, h: 297, pad: 15 },
+      };
+      const size = SIZES[q.get('size')] || SIZES['4x6'];
+      const showOrig = q.get('orig') !== '0';
+      const showText = q.get('text') !== '0';
+
+      // 용지 크기와 똑같이 화면을 만든다 (프린터 여백 없음 설정 권장)
+      const innerW = size.w - size.pad * 2;
+      const innerH = size.h - size.pad * 2;
+      document.getElementById('pageStyle').textContent = `@page { size: ${size.page}; margin: 0; }
+        .sheet { width: ${size.w}mm; height: ${size.h}mm; padding: ${size.pad}mm; }
+        .foot .who { font-size: ${(innerW * 0.085).toFixed(2)}mm; }
+        .foot .sub { font-size: ${(innerW * 0.05).toFixed(2)}mm; }`;
+      if (!showOrig) document.getElementById('orig').remove();
+      if (!showText) document.getElementById('foot').remove();
+
+      const res = await fetch('/api/teacher/items/' + encodeURIComponent(q.get('id')), {
+        headers: { 'x-teacher-key': localStorage.getItem('booth-teacher-key') || '' },
+      });
+      if (!res.ok) {
+        document.getElementById('msg').textContent = '작품을 불러오지 못했어요.';
+        return;
+      }
+      const it = await res.json();
+      document.title = `${it.name} - ${it.styleName}`;
+      if (showText) {
+        document.getElementById('who').textContent = it.charName ? `${it.charName} by ${it.name}` : `${it.name}의 캐릭터`;
+        document.getElementById('sub').textContent = `${it.styleEmoji} ${it.styleName} · ${it.title}`;
+      }
+      const load = (img, src) =>
+        new Promise((r) => {
+          if (!img) return r();
+          img.onload = img.onerror = r;
+          img.src = src;
+        });
+      await Promise.all([
+        load(document.getElementById('ai'), it.resultUrl),
+        load(document.getElementById('orig'), it.originalUrl),
+        document.fonts ? document.fonts.ready : null,
+      ]);
+
+      let marked = false;
+      const markPrinted = async () => {
+        if (marked) return;
+        marked = true;
+        await fetch(`/api/teacher/items/${it.id}/printed`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-teacher-key': localStorage.getItem('booth-teacher-key') || '' },
+          body: '{}',
+        });
+        if (window.opener) window.opener.postMessage({ type: 'printed', id: it.id }, location.origin);
+        document.getElementById('msg').textContent = '인쇄 완료로 표시했어요. 이 창은 닫아도 돼요.';
+      };
+      window.addEventListener('afterprint', markPrinted);
+      document.getElementById('printBtn').onclick = () => window.print();
+      document.getElementById('msg').textContent = '인쇄 창에서 "여백 없음"과 실제 용지 크기를 골라 주세요.';
+      setTimeout(() => window.print(), 300);
+    })();
+  </script>
+</body>
+</html>

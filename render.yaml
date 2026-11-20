@@ -1,5 +1,6 @@
-# Render.com 무료 배포 설정 (친구 퀴즈 배틀)
+# Render.com 무료 배포 설정
 services:
+  # 친구 퀴즈 배틀
   - type: web
     name: friend-quiz-battle
     runtime: node
@@ -7,3 +8,21 @@ services:
     rootDir: quiz-battle
     buildCommand: npm install --omit=dev
     startCommand: npm start
+
+  # AI 캐릭터 변신 부스 (키 값은 Render 화면에서 직접 입력)
+  - type: web
+    name: ai-character-booth
+    runtime: node
+    plan: free
+    rootDir: ai-character-booth
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PADLET_API_KEY
+        sync: false
+      - key: PADLET_BOARD_ID
+        sync: false
+      - key: TEACHER_PASSWORD
+        sync: false
